@@ -1,9 +1,6 @@
 .DS_STORE
 
-Builds
-**/Builds
-**/Builds/*
-**/Builds/**
+demo/Builds/
 
 # Compiled Object files
 *.slo
