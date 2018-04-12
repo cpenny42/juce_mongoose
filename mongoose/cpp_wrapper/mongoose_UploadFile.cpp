@@ -19,11 +19,11 @@ namespace Mongoose
     
     void UploadFile::saveTo(std::string directory)
     {
-        std::ostringstream oss;
-        oss << directory << "/" << filename;
-        std::fstream file;
-        file.open(oss.str().c_str(), std::fstream::out);
-        file << data;
-        file.close();
+        //std::ostringstream oss;
+        //oss << directory << "/" << filename;
+        //std::fstream file;
+        //file.open(oss.str().c_str(), std::fstream::out);
+        //file << data;
+        //file.close();
     }
 }

@@ -127,7 +127,7 @@ namespace Mongoose
     {
         stopped = true;
         while (!destroyed) {
-            Utils::sleep(100);
+			juce::Time::waitForMillisecondCounter(juce::Time::getMillisecondCounter() + 100);
         }
     }
 
