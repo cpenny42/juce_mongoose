@@ -25,7 +25,7 @@ namespace Mongoose
 #ifdef WIN32
 	Sleep(ms);
 #else
-    usleep(1000 * ms);
+    usleep((useconds_t) (1000 * ms));
 #endif
     }
 }

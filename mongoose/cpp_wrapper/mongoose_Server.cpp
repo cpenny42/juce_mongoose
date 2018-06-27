@@ -44,7 +44,7 @@ static int iterate_callback(struct mg_connection *connection)
 {
     if (connection->is_websocket && connection->content_len) {
         Server *server = (Server *)connection->server_param;
-        server->_webSocketData(connection, std::string(connection->content, connection->content_len));
+        server->_webSocketData(connection, std::string(connection->content, (size_t) connection->content_len));
     }
 
     return 1;
@@ -67,7 +67,7 @@ namespace Mongoose
         destroyed(false),
         server(NULL)
 #ifndef NO_WEBSOCKET 
-        ,websockets(NULL)
+    ,websockets(false)
 #endif
 
     {

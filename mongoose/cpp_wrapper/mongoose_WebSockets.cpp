@@ -50,10 +50,10 @@ namespace Mongoose
         mutex.unlock();
     }
 
-    WebSocket *WebSockets::getWebSocket(int id)
+    WebSocket *WebSockets::getWebSocket(int identifier)
     {
-        if (websocketsById.find(id) != websocketsById.end()) {
-            return websocketsById[id];
+        if (websocketsById.find(identifier) != websocketsById.end()) {
+            return websocketsById[identifier];
         }
 
         return NULL;

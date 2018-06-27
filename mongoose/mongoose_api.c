@@ -516,7 +516,7 @@ static const char *next_option(const char *list, struct vec *val,
       // Value has form "x=y", adjust pointers and lengths
       // so that val points to "x", and eq_val points to "y".
       eq_val->len = 0;
-      eq_val->ptr = (const char *) memchr(val->ptr, '=', val->len);
+      eq_val->ptr = (const char *) memchr(val->ptr, '=', (size_t) val->len);
       if (eq_val->ptr != NULL) {
         eq_val->ptr++;  // Skip over '=' character
         eq_val->len = (int) (val->ptr + val->len - eq_val->ptr);
@@ -539,11 +539,11 @@ static int spool(struct iobuf *io, const void *buf, int len) {
   //DBG(("1. %d %d %d", len, io->len, io->size));
   if (len <= 0) {
   } else if ((new_len = io->len + len) < io->size) {
-    memcpy(io->buf + io->len, buf, len);
+    memcpy(io->buf + io->len, buf, (size_t) len);
     io->len = new_len;
-  } else if ((p = (char *) realloc(io->buf, (int) (new_len * mult))) != NULL) {
+  } else if ((p = (char *) realloc(io->buf, (size_t) (new_len * mult))) != NULL) {
     io->buf = p;
-    memcpy(io->buf + io->len, buf, len);
+    memcpy(io->buf + io->len, buf, (size_t) len);
     io->len = new_len;
     io->size = (int) (new_len * mult);
   } else {
@@ -693,7 +693,7 @@ static void send_http_error(struct connection *conn, int code,
   if (fmt != NULL) {
     body[body_len++] = '\n';
     va_start(ap, fmt);
-    body_len += mg_snprintf(body + body_len, sizeof(body) - body_len, fmt, ap);
+    body_len += mg_snprintf(body + body_len, sizeof(body) - (size_t) body_len, fmt, ap);
     va_end(ap);
   }
   if (code >= 300 && code <= 399) {
@@ -725,7 +725,7 @@ static int alloc_vprintf(char **buf, size_t size, const char *fmt, va_list ap) {
   len = vsnprintf(NULL, 0, fmt, ap_copy);
 
   if (len > (int) size &&
-      (size = len + 1) > 0 &&
+      (size = (size_t) len + 1) > 0 &&
       (*buf = (char *) malloc(size)) == NULL) {
     len = -1;  // Allocation failed, mark failure
   } else {
@@ -1003,7 +1003,7 @@ static char *addenv(struct cgi_env_block *block, const char *fmt, ...) {
   va_list ap;
 
   // Calculate how much space is left in the buffer
-  space = sizeof(block->buf) - block->len - 2;
+  space = (int) (sizeof(block->buf) - (size_t) block->len - 2);
   assert(space >= 0);
 
   // Make a pointer to the free space int the buffer
@@ -1184,7 +1184,7 @@ static void read_from_cgi(struct connection *conn) {
       if (len == 0) return;
       if (len > 0) {
         memset(&c, 0, sizeof(c));
-        memcpy(buf2, io->buf + s_len, len);
+        memcpy(buf2, io->buf + s_len, (size_t) len);
         buf2[len - 1] = '\0';
         parse_http_headers(&s, &c);
         if (mg_get_header(&c, "Location") != NULL) {
@@ -1201,9 +1201,9 @@ static void read_from_cgi(struct connection *conn) {
 
 static void forward_post_data(struct connection *conn) {
   struct iobuf *io = &conn->local_iobuf;
-  int n = (int) send(conn->endpoint.cgi_sock, io->buf, io->len, 0);
+  int n = (int) send(conn->endpoint.cgi_sock, io->buf, (size_t) io->len, 0);
   if (n > 0) {
-    memmove(io->buf, io->buf + n, io->len - n);
+    memmove(io->buf, io->buf + n, (size_t) io->len - (size_t) n);
     io->len -= n;
   }
 }
@@ -1245,7 +1245,7 @@ static int parse_net(const char *spec, uint32_t *net, uint32_t *mask) {
       isbyte(a) && isbyte(b) && isbyte(c) && isbyte(d) &&
       slash >= 0 && slash < 33) {
     len = n;
-    *net = ((uint32_t)a << 24) | ((uint32_t)b << 16) | ((uint32_t)c << 8) | d;
+    *net = (uint32_t) (((uint32_t)a << 24) | ((uint32_t)b << 16) | ((uint32_t)c << 8) | (size_t) d);
     *mask = slash ? 0xffffffffU << (32 - slash) : 0;
   }
 
@@ -1484,7 +1484,7 @@ static int match_prefix(const char *pattern, int pattern_len, const char *str) {
   const char *or_str;
   int i, j, len, res;
 
-  if ((or_str = (const char *) memchr(pattern, '|', pattern_len)) != NULL) {
+  if ((or_str = (const char *) memchr(pattern, '|', (size_t) pattern_len)) != NULL) {
     res = match_prefix(pattern, (int) (or_str - pattern), str);
     return res > 0 ? res :
         match_prefix(or_str + 1, (int) ((pattern + pattern_len) - (or_str + 1)), str);
@@ -1788,7 +1788,7 @@ static void send_websocket_handshake(struct mg_connection *conn,
 
   mg_snprintf(buf, sizeof(buf), "%s%s", key, magic);
   SHA1Init(&sha_ctx);
-  SHA1Update(&sha_ctx, (unsigned char *) buf, (int) strlen(buf));
+  SHA1Update(&sha_ctx, (unsigned char *) buf, (uint32_t) strlen(buf));
   SHA1Final((unsigned char *) sha, &sha_ctx);
   base64_encode((unsigned char *) sha, sizeof(sha), b64_sha);
   mg_snprintf(buf, sizeof(buf), "%s%s%s",
@@ -1817,8 +1817,7 @@ static int deliver_websocket_frame(struct connection *conn) {
       data_len = ((((int) buf[2]) << 8) + buf[3]);
     } else if (buf_len >= 10 + mask_len) {
       header_len = 10 + mask_len;
-      data_len = (int) (((uint64_t) htonl(* (uint32_t *) &buf[2])) << 32) +
-        htonl(* (uint32_t *) &buf[6]);
+      data_len = (int) (((uint64_t) htonl(* (uint32_t *) &buf[2])) << 32) + (int) htonl(* (uint32_t *) &buf[6]);
     }
   }
 
@@ -1841,7 +1840,7 @@ static int deliver_websocket_frame(struct connection *conn) {
     if (conn->endpoint.uh->handler(&conn->mg_conn)) {
       conn->flags |= CONN_SPOOL_DONE;
     }
-    memmove(buf, buf + frame_len, buf_len - frame_len);
+    memmove(buf, buf + frame_len, (size_t) buf_len - (size_t) frame_len);
     conn->local_iobuf.len -= frame_len;
   }
 
@@ -1863,7 +1862,7 @@ int mg_websocket_write(struct mg_connection* conn, int opcode,
     // Frame format: http://tools.ietf.org/html/rfc6455#section-5.2
     if (data_len < 126) {
       // Inline 7-bit length field
-      copy[1] = data_len;
+      copy[1] = (unsigned char) data_len;
       memcpy(copy + 2, data, data_len);
       copy_len = 2 + data_len;
     } else if (data_len <= 0xFFFF) {
@@ -1926,7 +1925,7 @@ static void call_uri_handler(struct connection *conn) {
 
 static void write_to_socket(struct connection *conn) {
   struct iobuf *io = &conn->remote_iobuf;
-  int n = (int)(conn->ssl == NULL ? send(conn->client_sock, io->buf, io->len, 0) :
+  int n = (int)(conn->ssl == NULL ? send(conn->client_sock, io->buf, (size_t) io->len, 0) :
 #ifdef USE_SSL
     SSL_write(conn->ssl, io->buf, io->len);
 #else
@@ -1939,7 +1938,7 @@ static void write_to_socket(struct connection *conn) {
   if (is_error(n)) {
     conn->flags |= CONN_CLOSE;
   } else if (n > 0) {
-    memmove(io->buf, io->buf + n, io->len - n);
+    memmove(io->buf, io->buf + n, (size_t) io->len - (size_t) n);
     io->len -= n;
     conn->num_bytes_sent += n;
   }
@@ -2043,7 +2042,7 @@ static void get_mime_type(const struct mg_server *server, const char *path,
   while ((list = next_option(list, &ext_vec, &mime_vec)) != NULL) {
     // ext now points to the path suffix
     ext = path + path_len - ext_vec.len;
-    if (mg_strncasecmp(ext, ext_vec.ptr, ext_vec.len) == 0) {
+    if (mg_strncasecmp(ext, ext_vec.ptr, (size_t) ext_vec.len) == 0) {
       *vec = mime_vec;
       return;
     }
@@ -2100,8 +2099,8 @@ static int find_index_file(struct connection *conn, char *path,
       continue;
 
     // Prepare full path to the index file
-    strncpy(path + n + 1, filename_vec.ptr, filename_vec.len);
-    path[n + 1 + filename_vec.len] = '\0';
+    strncpy(path + n + 1, filename_vec.ptr, (size_t) filename_vec.len);
+    path[(size_t) (n + 1 + (size_t) filename_vec.len)] = '\0';
 
     //DBG(("[%s]", path));
 
@@ -2318,11 +2317,11 @@ static int scan_directory(struct connection *conn, const char *dir,
     // Resize the array if nesessary
     if (arr_ind >= arr_size) {
       if ((p = (struct dir_entry *)
-           realloc(*arr, (inc + arr_size) * sizeof(**arr))) != NULL) {
+           realloc(*arr, (size_t) (((size_t) inc + (size_t) arr_size) * sizeof(**arr)))) != NULL) {
         // Memset new chunk to zero, otherwize st_mtime will have garbage which
         // can make strftime() segfault, see
         // http://code.google.com/p/mongoose/issues/detail?id=79
-        memset(p + arr_size, 0, sizeof(**arr) * inc);
+        memset(p + arr_size, 0, sizeof(**arr) * (size_t) inc);
 
         *arr = p;
         arr_size += inc;
@@ -2448,7 +2447,7 @@ static void send_directory_listing(struct connection *conn, const char *dir) {
   write_chunk(conn, buf, (int) strlen(buf));
 
   num_entries = scan_directory(conn, dir, &arr);
-  qsort(arr, num_entries, sizeof(arr[0]), compare_dir_entries);
+  qsort(arr, (size_t) num_entries, sizeof(arr[0]), compare_dir_entries);
   for (i = 0; i < num_entries; i++) {
     print_dir_entry(&arr[i]);
     free(arr[i].file_name);
@@ -2588,7 +2587,7 @@ static int put_dir(const char *path) {
   // Create intermediate directories if they do not exist
   for (s = p = path + 1; (p = strchr(s, '/')) != NULL; s = ++p) {
     if (p - path >= (int) sizeof(buf)) return -1; // Buffer overflow
-    memcpy(buf, path, p - path);
+    memcpy(buf, path, (size_t) (p - path));
     buf[p - path] = '\0';
     if (stat(buf, &st) != 0 && mkdir(buf, 0755) != 0) return -1;
     if (p[1] == '\0') return 0;  // Path is a directory itself
@@ -2640,9 +2639,9 @@ static void handle_put(struct connection *conn, const char *path) {
 
 static void forward_put_data(struct connection *conn) {
   struct iobuf *io = &conn->local_iobuf;
-  int n = (int) write(conn->endpoint.fd, io->buf, io->len);
+  int n = (int) write(conn->endpoint.fd, io->buf, (size_t) io->len);
   if (n > 0) {
-    memmove(io->buf, io->buf + n, io->len - n);
+    memmove(io->buf, io->buf + n, (size_t) io->len - (size_t) n);
     io->len -= n;
     conn->cl -= n;
     if (conn->cl <= 0) {
@@ -3014,7 +3013,7 @@ int parse_header(const char *str, int str_len, const char *var_name, char *buf,
   // Find where variable starts
   for (s = str; s != NULL && s + n < end; s++) {
     if ((s == str || s[-1] == ' ') && s[n] == '=' &&
-        !memcmp(s, var_name, n)) break;
+        !memcmp(s, var_name, (size_t) n)) break;
   }
 
   if (s != NULL && &s[n + 1] < end) {
@@ -3436,10 +3435,10 @@ static void process_request(struct connection *conn) {
     // If request is buffered in, remove it from the iobuf. This is because
     // iobuf could be reallocated, and pointers in parsed request could
     // become invalid.
-    conn->request = (char *) malloc(conn->request_len);
-    memcpy(conn->request, io->buf, conn->request_len);
+    conn->request = (char *) malloc((size_t) conn->request_len);
+    memcpy(conn->request, io->buf, (size_t) conn->request_len);
     DBG(("%p ==> [%.*s]", conn, conn->request_len, conn->request));
-    memmove(io->buf, io->buf + conn->request_len, io->len - conn->request_len);
+    memmove(io->buf, io->buf + conn->request_len, (size_t) io->len - (size_t) conn->request_len);
     io->len -= conn->request_len;
     conn->request_len = parse_http_message(conn->request, conn->request_len,
                                            &conn->mg_conn);
@@ -3598,7 +3597,7 @@ static void log_access(const struct connection *conn, const char *path) {
 
 static void gobble_prior_post_data(struct iobuf *io, int len) {
   if (len > 0 && len <= io->len) {
-    memmove(io->buf, io->buf + len, io->len - len);
+    memmove(io->buf, io->buf + len, (size_t) io->len - (size_t) len);
     io->len -= len;
   }
 }
@@ -3640,8 +3639,8 @@ static void close_local_endpoint(struct connection *conn) {
 
 static void transfer_file_data(struct connection *conn) {
   char buf[IOBUF_SIZE];
-  int n = (int) read(conn->endpoint.fd, buf, conn->cl < (int64_t) sizeof(buf) ?
-               (int) conn->cl : (int) sizeof(buf));
+  int n = (int) read(conn->endpoint.fd, buf, (size_t) (conn->cl < (int64_t) sizeof(buf) ?
+               (int) conn->cl : (int) sizeof(buf)));
 
   if (is_error(n)) {
     close_local_endpoint(conn);
@@ -3859,7 +3858,7 @@ int mg_get_var(const struct mg_connection *conn, const char *name,
   int len = get_var(conn->query_string, conn->query_string == NULL ? 0 :
                     strlen(conn->query_string), name, dst, dst_len);
   if (len < 0) {
-    len = get_var(conn->content, conn->content_len, name, dst, dst_len);
+    len = get_var(conn->content, (size_t) conn->content_len, name, dst, (size_t) dst_len);
   }
   return len;
 }
@@ -3889,17 +3888,17 @@ int mg_parse_multipart(const char *buf, int buf_len,
   // Loop through headers, fetch variable name and file name
   var_name[0] = file_name[0] = '\0';
   for (n = bl; (ll = get_line_len(buf + n, hl - n)) > 0; n += ll) {
-    if (mg_strncasecmp(cd, buf + n, cdl) == 0) {
+    if (mg_strncasecmp(cd, buf + n, (size_t) cdl) == 0) {
       parse_header(buf + n + cdl, ll - (cdl + 2), "name",
-                   var_name, var_name_len);
+                   var_name, (size_t) var_name_len);
       parse_header(buf + n + cdl, ll - (cdl + 2), "filename",
-                   file_name, file_name_len);
+                   file_name, (size_t) file_name_len);
     }
   }
 
   // Scan body, search for terminating boundary
   for (pos = hl; pos + (bl - 2) < buf_len; pos++) {
-    if (buf[pos] == '-' && !memcmp(buf, &buf[pos], bl - 2)) {
+    if (buf[pos] == '-' && !memcmp(buf, &buf[pos], (size_t) bl - 2)) {
       if (data_len != NULL) *data_len = (pos - 2) - hl;
       if (data != NULL) *data = buf + hl;
       return pos;

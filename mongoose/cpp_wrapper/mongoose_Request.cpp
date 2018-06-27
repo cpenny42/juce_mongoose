@@ -25,7 +25,7 @@ static const char *mg_strcasestr(const char *big_str, const char *small_str) {
   int i, big_len = (int) strlen(big_str), small_len = (int) strlen(small_str);
 
   for (i = 0; i <= big_len - small_len; i++) {
-    if (mg_strncasecmp(big_str + i, small_str, small_len) == 0) {
+    if (mg_strncasecmp(big_str + i, small_str, (size_t) small_len) == 0) {
       return big_str + i;
     }
   }
@@ -116,9 +116,8 @@ namespace Mongoose
 
     void Request::writeResponse(Response *response)
     {
-        std::string data = response->getData();
-
-        mg_write(connection, data.c_str(), (int) data.size());
+        std::string responseData = response->getData();
+        mg_write(connection, responseData.c_str(), (int) responseData.size());
     }
 
     bool Request::hasVariable(std::string key)
@@ -148,13 +147,13 @@ namespace Mongoose
         return mapKeyValue;
     }
 
-    bool Request::readVariable(const char *data, std::string key, std::string &output)
+    bool Request::readVariable(const char *dataToRead, std::string key, std::string &output)
     {
         int size = 1024, ret;
-        char *buffer = new char[size];
+        char *buffer = new char[(size_t) size];
 
         do {
-            ret = mg_get_var(connection, key.c_str(), buffer, size);
+            ret = mg_get_var(connection, key.c_str(), buffer, (size_t) size);
 
             if (ret == -1) {
                 return false;
@@ -163,7 +162,7 @@ namespace Mongoose
             if (ret == -2) {
                 size *= 2;
                 delete[] buffer;
-                buffer = new char[size];
+                buffer = new char[(size_t) size];
             }
         } while (ret == -2);
 
@@ -218,7 +217,7 @@ namespace Mongoose
         int i;
         int size = 1024;
         int ret;
-        char *buffer = new char[size];
+        char *buffer = new char[(size_t) size];
         char dummy[10];
         const char *place = NULL;
 
@@ -237,12 +236,12 @@ namespace Mongoose
         }
 
         do {
-            ret = mg_get_cookie(place, key.c_str(), buffer, size);
+            ret = mg_get_cookie(place, key.c_str(), buffer, (size_t) size);
 
             if (ret == -2) {
                 size *= 2;
                 delete[] buffer;
-                buffer = new char[size];
+                buffer = new char[(size_t) size];
             }
         } while (ret == -2);
 
@@ -268,12 +267,12 @@ namespace Mongoose
     {
         char var_name[1024];
         char file_name[1024];
-        const char *data;
+        const char *dataToUpload;
         int data_len;
 
         if (mg_parse_multipart(connection->content, connection->content_len,
-                    var_name, sizeof(var_name), file_name, sizeof(file_name), &data, &data_len)) {
-            uploadFiles.push_back(UploadFile(std::string(file_name), std::string(data, data_len)));
+                    var_name, sizeof(var_name), file_name, sizeof(file_name), &dataToUpload, &data_len)) {
+            uploadFiles.push_back(UploadFile(std::string(file_name), std::string(dataToUpload, (size_t) data_len)));
         }
     }
 }

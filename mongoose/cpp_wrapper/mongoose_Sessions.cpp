@@ -26,7 +26,7 @@ namespace Mongoose
             int i;
 
             for (i=0; i<30; i++) {
-                newCookie << charset[rand()%CHARSET_SIZE];
+                newCookie << charset[(size_t) ((size_t)rand()%CHARSET_SIZE)];
             }
 
             response.setCookie(key, newCookie.str());

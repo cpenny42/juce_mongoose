@@ -34,14 +34,14 @@ namespace Mongoose
         return request;
     }
 
-    void WebSocket::send(std::string data, int opcode)
+    void WebSocket::send(std::string dataToSend, int opcode)
     {
         if (isClosed()) {
             return;
         }
 
         mutex.lock();
-        if (!mg_websocket_write(connection, opcode, data.c_str(), data.size())) {
+        if (!mg_websocket_write(connection, opcode, dataToSend.c_str(), dataToSend.size())) {
             closed = true;
         }
         mutex.unlock();
