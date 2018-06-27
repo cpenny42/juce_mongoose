@@ -4,9 +4,9 @@ namespace Mongoose
 {
     class Utils
     {
-        public:
+    public:
         static std::string htmlEntities(std::string data);
-            static void sleep(int ms);
+        //static void sleep(int ms);
     };
 }
 

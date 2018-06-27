@@ -24,6 +24,7 @@
 #pragma once
 #define JUCE_MONGOOSE_H_INCLUDED
 
+#include <juce_core/juce_core.h>
 #include <map>
 #include <stdlib.h>
 #include <fstream>

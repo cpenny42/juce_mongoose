@@ -20,12 +20,12 @@ namespace Mongoose
         return buffer;
     }
 
-    void Utils::sleep(int ms)
+   /* void Utils::sleep(int ms)
     {
 #ifdef WIN32
-	Sleep(ms);
+		juce::Thread::sleep(ms);
 #else
     usleep((useconds_t) (1000 * ms));
 #endif
-    }
+    }*/
 }
