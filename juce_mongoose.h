@@ -24,6 +24,10 @@
 #pragma once
 #define JUCE_MONGOOSE_H_INCLUDED
 
+// Added to remove ambiguous Rectangle/juce::Rectangle issues
+#define NOGDI 
+#define NOMINMAX
+
 #include <juce_core/juce_core.h>
 #include <map>
 #include <stdlib.h>
